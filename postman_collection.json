@@ -1,0 +1,476 @@
+{
+  "info": {
+    "name": "Task API - Full Flow",
+    "_postman_id": "b3f2a1d0-1111-4a5b-9c1d-task-api-flow",
+    "description": "End-to-end test flow for the warehouse/purchasing API defined in public/files/Tz.docx. Run requests top to bottom inside each folder in order - each request auto-saves the IDs the next one needs via collection variables. Adjust base_url if you're not using `php artisan serve` on port 8000.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" },
+    { "key": "provider_id", "value": "" },
+    { "key": "root_category_id", "value": "" },
+    { "key": "child_category_id", "value": "" },
+    { "key": "product_id", "value": "" },
+    { "key": "storage_id", "value": "" },
+    { "key": "client_id", "value": "" },
+    { "key": "batch_id", "value": "" },
+    { "key": "batch_item_id", "value": "" },
+    { "key": "order_id", "value": "" },
+    { "key": "order_item_id", "value": "" },
+    { "key": "report_date", "value": "2026-08-22" }
+  ],
+  "item": [
+    {
+      "name": "1. Setup",
+      "item": [
+        {
+          "name": "Create Provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmad Tea\",\n  \"phone\": \"+998901234567\",\n  \"email\": \"contact@ahmadtea.com\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/providers", "host": ["{{base_url}}"], "path": ["providers"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('provider_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Providers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/providers", "host": ["{{base_url}}"], "path": ["providers"] }
+          }
+        },
+        {
+          "name": "Create Root Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmad Tea\",\n  \"provider_id\": {{provider_id}}\n}"
+            },
+            "url": { "raw": "{{base_url}}/categories", "host": ["{{base_url}}"], "path": ["categories"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('root_category_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Child Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Black Tea\",\n  \"parent_id\": {{root_category_id}}\n}"
+            },
+            "url": { "raw": "{{base_url}}/categories", "host": ["{{base_url}}"], "path": ["categories"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('inherits provider from parent', () => pm.expect(json.data.provider_id).to.eql(parseInt(pm.collectionVariables.get('provider_id'))));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('child_category_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/categories", "host": ["{{base_url}}"], "path": ["categories"] }
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ahmad Tea Earl Grey, 500g\",\n  \"category_id\": {{child_category_id}},\n  \"price\": 25000\n}"
+            },
+            "url": { "raw": "{{base_url}}/products", "host": ["{{base_url}}"], "path": ["products"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('product_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/products", "host": ["{{base_url}}"], "path": ["products"] }
+          }
+        },
+        {
+          "name": "Create Storage",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Warehouse\",\n  \"location\": \"Tashkent\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/storages", "host": ["{{base_url}}"], "path": ["storages"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('storage_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Storages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/storages", "host": ["{{base_url}}"], "path": ["storages"] }
+          }
+        },
+        {
+          "name": "Create Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Makro Supermarket\",\n  \"phone\": \"+998901112233\",\n  \"address\": \"Tashkent, Chilanzar\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('client_id', json.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Clients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/clients", "host": ["{{base_url}}"], "path": ["clients"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Purchasing",
+      "item": [
+        {
+          "name": "Purchase Products (Add to Storage)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider_id\": {{provider_id}},\n  \"purchased_at\": \"2026-08-01\",\n  \"reference_no\": \"PO-0001\",\n  \"products\": [\n    {\n      \"id\": {{product_id}},\n      \"storage_id\": {{storage_id}},\n      \"qty\": 100,\n      \"purchase_price\": 15000\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/purchases", "host": ["{{base_url}}"], "path": ["purchases"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('batch_id', json.data.id); }",
+                  "if (json.data && json.data.items && json.data.items.length) { pm.collectionVariables.set('batch_item_id', json.data.items[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Purchase Products - Second Batch (older date, for FIFO test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider_id\": {{provider_id}},\n  \"purchased_at\": \"2026-07-01\",\n  \"reference_no\": \"PO-0000-OLDER\",\n  \"products\": [\n    {\n      \"id\": {{product_id}},\n      \"storage_id\": {{storage_id}},\n      \"qty\": 20,\n      \"purchase_price\": 14000\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/purchases", "host": ["{{base_url}}"], "path": ["purchases"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Available Products for Ordering",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/products/available", "host": ["{{base_url}}"], "path": ["products", "available"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('each item has id, name, category_name, price, qty', () => {",
+                  "  if (json.data.length) {",
+                  "    const row = json.data[0];",
+                  "    ['id','name','category_name','price','qty'].forEach(k => pm.expect(row).to.have.property(k));",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Orders",
+      "item": [
+        {
+          "name": "Create Client Order (FIFO batch allocation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{client_id}},\n  \"products\": [\n    {\n      \"id\": {{product_id}},\n      \"qty\": 30\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/orders", "host": ["{{base_url}}"], "path": ["orders"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "if (json.data && json.data.id) { pm.collectionVariables.set('order_id', json.data.id); }",
+                  "if (json.data && json.data.items && json.data.items.length) {",
+                  "  pm.collectionVariables.set('order_item_id', json.data.items[0].id);",
+                  "  pm.test('order pulled from oldest batch first', () => {",
+                  "    pm.expect(json.data.items[0].qty).to.eql(20);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order - Not Enough Stock (expect error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{client_id}},\n  \"products\": [\n    {\n      \"id\": {{product_id}},\n      \"qty\": 999999\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/orders", "host": ["{{base_url}}"], "path": ["orders"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('rejects when stock insufficient', () => pm.expect(pm.response.code).to.be.oneOf([400,409,422,500]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Refunds",
+      "item": [
+        {
+          "name": "Refund Purchased Products on Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"batch_item_id\": {{batch_item_id}},\n      \"qty\": 5,\n      \"reason\": \"Damaged packaging\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/batches/refund", "host": ["{{base_url}}"], "path": ["batches", "refund"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refund Sold Products on Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"order_item_id\": {{order_item_id}},\n      \"qty\": 2,\n      \"reason\": \"Client returned unsold stock\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{base_url}}/orders/refund", "host": ["{{base_url}}"], "path": ["orders", "refund"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Reports",
+      "item": [
+        {
+          "name": "Calculate Remaining Quantities in Storage",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/storages/remaining?date={{report_date}}",
+              "host": ["{{base_url}}"],
+              "path": ["storages", "remaining"],
+              "query": [{ "key": "date", "value": "{{report_date}}" }]
+            }
+          }
+        },
+        {
+          "name": "Calculate Profit per Batch",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/batches/profit", "host": ["{{base_url}}"], "path": ["batches", "profit"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('each row has cost/revenue/profit', () => {",
+                  "  if (json.data.length) {",
+                  "    const row = json.data[0];",
+                  "    ['batch_id','provider_id','cost','revenue','profit'].forEach(k => pm.expect(row).to.have.property(k));",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
