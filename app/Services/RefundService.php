@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BatchItem;
 use App\Models\OrderItem;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 
 class RefundService
@@ -25,11 +26,22 @@ class RefundService
             throw new \DomainException("cannot refund  {$qty} units of batch item # {$item->id}; only{$item->remaining_qty} remain in stock ");
         $item->decrement('remaining_qty', $qty);
         $item->increment('refunded_qty', $qty);
-        return $item->refunds()->create([
+        $refund = $item->refunds()->create([
             'qty' => $qty,
             'amount' => $qty*$item->purchase_price,
             'refunded_at' => now(),
         ]);
+
+        StockMovement::create([
+            'storage_id' => $item->storage_id,
+            'product_id' => $item->product_id,
+            'qty' => -$qty,
+            'type' => StockMovement::TYPE_BATCH_REFUND,
+            'source_id' => $refund->id,
+            'happened_at' => $refund->refunded_at,
+        ]);
+
+        return $refund;
     }
     public function refundOrder(array $lines){
         if(empty($lines))
@@ -56,6 +68,15 @@ class RefundService
             'refunded_at' => now(),
         ]);
         BatchItem::where('id', $orderItem->batch_item_id)->increment('remaining_qty', $qty);
+
+        StockMovement::create([
+            'storage_id' => $orderItem->storage_id,
+            'product_id' => $orderItem->product_id,
+            'qty' => $qty,
+            'type' => StockMovement::TYPE_ORDER_REFUND,
+            'source_id' => $refund->id,
+            'happened_at' => $refund->refunded_at,
+        ]);
 
         return $refund;
         }

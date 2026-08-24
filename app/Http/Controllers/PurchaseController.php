@@ -12,7 +12,7 @@ class PurchaseController extends Controller
     {
     }
 
-    // POST /api/purchases
+
     public function store(StorePurchaseRequest $request)
     {
         $providerId = (int) $request->input('provider_id');

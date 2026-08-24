@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Batch;
 use App\Models\Product;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseService
@@ -24,12 +25,21 @@ class PurchaseService
             foreach ($lines as $s) {
                 $this->assertProductBelongsToProvider($s['product_id'], $providerId);
 
-                $batch->items()->create([
+                $batchItem = $batch->items()->create([
                     'product_id' => $s['product_id'],
                     'storage_id' => $s['storage_id'],
                     'qty' => $s['qty'],
                     'purchase_price' => $s['purchase_price'],
                     'remaining_qty' => $s['qty'],
+                ]);
+
+                StockMovement::create([
+                    'storage_id' => $batchItem->storage_id,
+                    'product_id' => $batchItem->product_id,
+                    'qty' => $batchItem->qty,
+                    'type' => StockMovement::TYPE_PURCHASE,
+                    'source_id' => $batchItem->id,
+                    'happened_at' => $batch->purchased_at,
                 ]);
             }
 
