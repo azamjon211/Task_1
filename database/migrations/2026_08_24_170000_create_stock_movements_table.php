@@ -26,12 +26,7 @@ return new class extends Migration
             $table->index(['storage_id', 'product_id']);
         });
 
-        // Mavjud tarixiy ma'lumotlarni (batch_items/batch_refunds/order_items/order_refunds)
-        // ledger jadvaliga bir martalik ko'chirish, hozirgi UNION ALL mantig'i bilan bir xil.
-        //
-        // NOW() MySQL'ga xos funksiya (sqlite/postgres'da mavjud emas); shuning uchun
-        // created_at/updated_at uchun PHP tomonidan hisoblangan vaqt bound parametr sifatida
-        // beriladi — bu barcha DB driverlarida ishlaydi.
+
         $now = now();
 
         DB::statement("
