@@ -56,6 +56,8 @@ class OrderService
                 ->values()
                 ->groupBy('product_id');
 
+            $this->assertSufficientStock($requested, $batchItemsByProduct);
+
             foreach ($requested as $productId => $qty) {
                 $this->allocateProduct(
                     $order,
@@ -67,6 +69,27 @@ class OrderService
 
             return $order->load('items.product', 'items.batchItem', 'items.storage');
         }, 3);
+    }
+
+    /**
+     * Checks every requested product's availability up front, before any
+     * order_items/stock_movements are written, so a shortage on product #10
+     * doesn't leave products #1-9 already allocated only to be rolled back.
+     */
+    private function assertSufficientStock(array $requested, Collection $batchItemsByProduct): void
+    {
+        $shortages = [];
+
+        foreach ($requested as $productId => $qty) {
+            $available = $batchItemsByProduct->get($productId, new Collection())->sum('remaining_qty');
+            if ($available < $qty) {
+                $shortages[] = "product #{$productId}: requested {$qty}, available {$available}";
+            }
+        }
+
+        if (!empty($shortages)) {
+            throw new \DomainException('Not enough stock for: ' . implode('; ', $shortages) . '.');
+        }
     }
 
     private function allocateProduct(Order $order, Product $product, $batchItems, int $qty): void
@@ -86,24 +109,11 @@ class OrderService
                 'qty' => $take,
                 'sale_price' => $product->price,
             ]);
+            $orderItem->setRelation('order', $order);
 
-            StockMovement::create([
-                'storage_id' => $item->storage_id,
-                'product_id' => $product->id,
-                'qty' => -$take,
-                'type' => StockMovement::TYPE_SALE,
-                'source_id' => $orderItem->id,
-                'happened_at' => $order->created_at,
-            ]);
+            StockMovement::recordSale($orderItem, $item);
 
-            $item->decrement('remaining_qty', $take);
             $remainingToAllocate -= $take;
-        }
-
-        if ($remainingToAllocate > 0) {
-            throw new \DomainException(
-                "Not enough stock for product #{$product->id}: requested {$qty}, short by {$remainingToAllocate}."
-            );
         }
     }
 }

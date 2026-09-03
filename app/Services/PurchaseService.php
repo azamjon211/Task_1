@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Batch;
 use App\Models\Product;
 use App\Models\StockMovement;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseService
@@ -15,7 +17,19 @@ class PurchaseService
             throw new \InvalidArgumentException('A batch must contain at least one product line.');
         }
 
-        return DB::transaction(function () use ($providerId, $lines, $purchasedAt, $referenceNo) {
+        $productIds = collect($lines)->pluck('product_id')->unique()->sort()->values();
+
+        return DB::transaction(function () use ($providerId, $lines, $purchasedAt, $referenceNo, $productIds) {
+            $products = Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
+
+            if ($products->count() !== $productIds->count()) {
+                throw new ModelNotFoundException('One or more products were not found');
+            }
+
+            // Barcha qatorlarni bittada tekshiramiz: N ta qatordan oxirgisi provider'ga
+            // tegishli bo'lmasa ham, oldingi qatorlar allaqachon yozilib ulgurmasligi uchun.
+            $this->assertAllProductsBelongToProvider($products, $providerId);
+
             $batch = Batch::create([
                 'provider_id' => $providerId,
                 'purchased_at' => $purchasedAt ?? now()->toDateString(),
@@ -23,8 +37,6 @@ class PurchaseService
             ]);
 
             foreach ($lines as $s) {
-                $this->assertProductBelongsToProvider($s['product_id'], $providerId);
-
                 $batchItem = $batch->items()->create([
                     'product_id' => $s['product_id'],
                     'storage_id' => $s['storage_id'],
@@ -32,26 +44,22 @@ class PurchaseService
                     'purchase_price' => $s['purchase_price'],
                     'remaining_qty' => $s['qty'],
                 ]);
+                $batchItem->setRelation('batch', $batch);
 
-                StockMovement::create([
-                    'storage_id' => $batchItem->storage_id,
-                    'product_id' => $batchItem->product_id,
-                    'qty' => $batchItem->qty,
-                    'type' => StockMovement::TYPE_PURCHASE,
-                    'source_id' => $batchItem->id,
-                    'happened_at' => $batch->purchased_at,
-                ]);
+                StockMovement::recordPurchase($batchItem);
             }
 
             return $batch->load('items.product', 'items.storage');
         });
     }
-    public function assertProductBelongsToProvider(int $productId, int $providerId):void
+
+    private function assertAllProductsBelongToProvider(Collection $products, int $providerId): void
     {
-        $product = Product::with('category')->findOrFail($productId);
-        if($product->category->provider_id !== $providerId)
-            throw new \DomainException("Product #{$productId} does not belong to provider #{$providerId }]");
+        $mismatched = $products->reject(fn (Product $product) => $product->category->provider_id === $providerId);
+
+        if ($mismatched->isNotEmpty()) {
+            $ids = $mismatched->pluck('id')->implode(', ');
+            throw new \DomainException("Product(s) #{$ids} do not belong to provider #{$providerId}.");
+        }
     }
 }
-
-
